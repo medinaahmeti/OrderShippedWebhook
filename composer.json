@@ -1,0 +1,27 @@
+{
+    "name": "order-shipped-webhook/order-shipped-webhook",
+    "description": "order-shipped-webhook/order-shipped-webhook",
+    "type": "shopware-platform-plugin",
+    "version": "1.0.0",
+    "license": "MIT",
+    "require": {
+        "shopware/core": "~6.5.0"
+    },
+    "extra": {
+        "shopware-plugin-class": "OrderShippedWebhook\\OrderShippedWebhook",
+        "label": {
+            "de-DE": "OrderShippedWebhook",
+            "en-GB": "OrderShippedWebhook"
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "OrderShippedWebhook\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "OrderShippedWebhook\\Tests\\": "tests/"
+        }
+    }
+}
