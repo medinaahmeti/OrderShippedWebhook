@@ -2,7 +2,9 @@
 
 namespace OrderShippedWebhook\MessageQueue\Handler;
 
+use DateTimeInterface;
 use OrderShippedWebhook\MessageQueue\Message\SendWebhookMessage;
+use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
@@ -10,16 +12,14 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class SendWebhookHandler
 {
-    private EntityRepository $orderRepository;
-    private HttpClientInterface $httpClient;
-
+    /**
+     * @phpstan-ignore-next-line
+     */
     public function __construct(
-        EntityRepository    $orderRepository,
-        HttpClientInterface $httpClient
+        private readonly EntityRepository    $orderRepository,
+        private readonly HttpClientInterface $httpClient
     )
     {
-        $this->orderRepository = $orderRepository;
-        $this->httpClient = $httpClient;
     }
 
     public function __invoke(SendWebhookMessage $message): void
@@ -30,22 +30,25 @@ class SendWebhookHandler
             'currency',
             'lineItems',
             'billingAddress.country',
-            //medina
             'deliveries.shippingMethod.country',
             'transactions.paymentMethod'
         ]);
 
+        /** @var OrderEntity|null $order */
         $order = $this->orderRepository->search($criteria, $context)->first();
 
-        if (!$order) {
+        if (!$order instanceof OrderEntity) {
             return;
         }
 
-        $lineItems = $order->getLineItems();
+        $lineItems = $order->getLineItems() ?? [];
         $billingAddress = $order->getBillingAddress();
-        $delivery = $order->getDeliveries()->first();
-        $transaction = $order->getTransactions()->first();
+        $deliveries = $order->getDeliveries();
+        $delivery = $deliveries?->first();
+        $transactions = $order->getTransactions();
+        $transaction = $transactions?->first();
         $shippingAddress = $delivery?->getShippingOrderAddress();
+        $phoneNumber = $shippingAddress?->getPhoneNumber();
 
         $trackingNumbers = $delivery?->getTrackingCodes() ?? [];
         $trackingCode = implode(', ', $trackingNumbers);
@@ -57,7 +60,7 @@ class SendWebhookHandler
                 'name' => $item->getLabel(),
                 'quantity' => $item->getQuantity(),
                 'price' => $item->getUnitPrice(),
-                'currency' => $order->getCurrency()->getIsoCode(),
+                'currency' => $order->getCurrency()?->getIsoCode(),
             ];
         }
 
@@ -65,16 +68,15 @@ class SendWebhookHandler
         $payload = [
             'order' => [
                 'order_id' => $order->getId(),
-                'order_date' => $order->getCreatedAt()?->format(\DateTime::ATOM),
+                'order_date' => $order->getCreatedAt()?->format(DateTimeInterface::ATOM),
                 'customer' => [
                     'customer_id' => $customer?->getCustomerId(),
-                    'name' => $customer?->getFirstName() . ' ' . $customer?->getLastName(),
+                    'name' => trim(($customer?->getFirstName() ?? '') . ' ' . ($customer?->getLastName() ?? '')),
                     'email' => $customer?->getEmail(),
-                    //medina
-                    //'phone' => $customer?->getPhoneNumber()
+                    "phone" => $phoneNumber
                 ],
                 'shipping_address' => [
-                    'name' => $shippingAddress?->getFirstName() . ' ' . $shippingAddress?->getLastName(),
+                    'name' => trim(($shippingAddress?->getFirstName() ?? '') . ' ' . ($shippingAddress?->getLastName() ?? '')),
                     'street' => $shippingAddress?->getStreet(),
                     'city' => $shippingAddress?->getCity(),
                     'state' => $shippingAddress?->getCountryState()?->getShortCode(),
@@ -82,12 +84,12 @@ class SendWebhookHandler
                     'country' => $shippingAddress?->getCountry()?->getName(),
                 ],
                 'billing_address' => [
-                    'name' => $billingAddress?->getFirstName() . ' ' . $billingAddress?->getLastName(),
+                    'name' => trim(($billingAddress?->getFirstName() ?? '') . ' ' . ($billingAddress?->getLastName() ?? '')),
                     'street' => $billingAddress?->getStreet(),
                     'city' => $billingAddress?->getCity(),
                     'state' => $billingAddress?->getCountryState()?->getShortCode(),
                     'postal_code' => $billingAddress?->getZipcode(),
-//                    'country' => $billingAddress?->getCountry()?->getName(),
+                    'country' => $billingAddress?->getCountry()?->getName(),
                 ],
                 'products' => $products,
                 'total_amount' => $order->getAmountTotal(),
@@ -98,15 +100,15 @@ class SendWebhookHandler
                 ],
                 'delivery' => [
                     'delivery_method' => $delivery?->getShippingMethod()?->getName(),
-                    'tracking_number' => $trackingCode ?? null,
+                    'tracking_number' => $trackingCode,
                     'delivery_status' => $delivery?->getStateMachineState()?->getTechnicalName(),
                     'estimated_delivery_date' => $delivery?->getShippingDateEarliest()?->format('Y-m-d')
                 ],
                 'order_status' => $order->getStateMachineState()?->getTechnicalName()
             ]
         ];
-//        $this->httpClient->request('POST', 'https://webhook.site/2b117c33-df76-4701-bb5f-22f22f8645f0', [
-//            'json' => $payload
-//        ]);
+        $this->httpClient->request('POST', 'https://webhook.site/2b117c33-df76-4701-bb5f-22f22f8645f0', [
+            'json' => $payload
+        ]);
     }
 }

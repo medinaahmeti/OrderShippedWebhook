@@ -3,8 +3,9 @@
 namespace OrderShippedWebhook\Subscriber;
 
 use OrderShippedWebhook\MessageQueue\Message\SendWebhookMessage;
-use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryEntity;
 use Shopware\Core\Checkout\Order\OrderEvents;
+use Shopware\Core\Framework\DataAbstractionLayer\Event\EntityWrittenEvent;
+use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Messenger\Exception\ExceptionInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -12,10 +13,12 @@ use Symfony\Component\Messenger\MessageBusInterface;
 class OrderShippedSubscriber implements EventSubscriberInterface
 {
     private MessageBusInterface $bus;
+    private SystemConfigService $configService;
 
-    public function __construct(MessageBusInterface $bus)
+    public function __construct(MessageBusInterface $bus, SystemConfigService $configService)
     {
         $this->bus = $bus;
+        $this->configService = $configService;
     }
 
     public static function getSubscribedEvents(): array
@@ -25,11 +28,17 @@ class OrderShippedSubscriber implements EventSubscriberInterface
         ];
     }
 
-    /**
-     * @throws ExceptionInterface
-     */
-    public function onDeliveryWritten($event): void
+    public function onDeliveryWritten(EntityWrittenEvent $event): void
     {
+        $enabled = $this->configService->get('OrderShippedWebhook.config.enableSubscriberWebhook');
+        if (!$enabled) {
+            return;
+        }
+        $stateId = $this->configService->get('OrderShippedWebhook.config.shippedStateId');
+        if (!$stateId) {
+            return;
+        }
+
         if ($event->getEntityName() !== 'order_delivery') {
             return;
         }
@@ -42,14 +51,14 @@ class OrderShippedSubscriber implements EventSubscriberInterface
                 continue;
             }
 
-            //medina
-            if ($payload['stateId'] != '018c62a034e073e5af065a1645f380d5') {
+            if ($payload['stateId'] != $stateId) {
                 continue;
             }
 
             if (!isset($payload['orderId'])) {
                 continue;
             }
+            /** @var string $orderId */
             $orderId = $payload['orderId'];
             $this->bus->dispatch(new SendWebhookMessage($orderId));
         }

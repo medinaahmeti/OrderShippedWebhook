@@ -1,0 +1,32 @@
+{% block sw_cms_el_config_banner_slider %}
+    <div class="sw-cms-el-config-banner-slider">
+        <sw-media-modal-v2
+                v-if="mediaModalIsOpen"
+                variant="regular"
+                :allowMultiSelect="false"
+                @media-modal-selection-change="onSelectionChanges"
+                @modal-close="onCloseModal">
+        </sw-media-modal-v2>
+
+        <div v-for="(item, index) in element.config.sliderItems.value" :key="index" class="banner-slider-config-item">
+            <h4>Slide {{ index + 1 }}</h4>
+
+            <sw-media-upload-v2
+                    :label="'Slide ' + (index + 1) + ' Image'"
+                    :source="item.mediaId"
+                    :allowMultiSelect="false"
+                    :uploadTag="'cms-banner-slider-' + (index + 1)"
+                    @media-upload-sidebar-open="onOpenMediaModal(index)"
+                    @media-upload-remove-image="onImageRemove(index)">
+            </sw-media-upload-v2>
+
+            <sw-text-field
+                    :label="'Slide ' + (index + 1) + ' Text'"
+                    v-model="item.text"
+                    @input="updateElementData(null, index)">
+            </sw-text-field>
+
+            <hr>
+        </div>
+    </div>
+{% endblock %}

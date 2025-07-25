@@ -4,13 +4,20 @@
         xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/shopware/trunk/src/Core/System/SystemConfig/Schema/config.xsd">
 
     <card>
-        <title>Minimal configuration</title>
-
-        <input-field type="text">
-            <name>textField</name>
-            <label>Test field with default value</label>
-            <defaultValue>test</defaultValue>
+        <title>Enable Subscriber Webhook calls</title>
+        <input-field type="bool">
+            <name>enableSubscriberWebhook</name>
+            <label>Enable Subscriber Calls</label>
+            <helpText>If disabled, subscriber won't be called.</helpText>
+            <defaultValue>false</defaultValue>
         </input-field>
     </card>
-
+    <card>
+        <title>Order Delivery Shipped State</title>
+        <component name="sw-entity-single-select">
+            <name>shippedStateId</name>
+            <entity>state_machine_state</entity>
+            <label>Select Shipped State for Order Delivery</label>
+        </component>
+    </card>
 </config>
