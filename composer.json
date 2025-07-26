@@ -18,10 +18,5 @@
         "psr-4": {
             "OrderShippedWebhook\\": "src/"
         }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "OrderShippedWebhook\\Tests\\": "tests/"
-        }
     }
 }

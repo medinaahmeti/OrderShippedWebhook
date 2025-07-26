@@ -7,18 +7,15 @@ use Shopware\Core\Checkout\Order\OrderEvents;
 use Shopware\Core\Framework\DataAbstractionLayer\Event\EntityWrittenEvent;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Symfony\Component\Messenger\Exception\ExceptionInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 class OrderShippedSubscriber implements EventSubscriberInterface
 {
-    private MessageBusInterface $bus;
-    private SystemConfigService $configService;
-
-    public function __construct(MessageBusInterface $bus, SystemConfigService $configService)
+    public function __construct(
+        private readonly MessageBusInterface $bus,
+        private readonly SystemConfigService $configService
+    )
     {
-        $this->bus = $bus;
-        $this->configService = $configService;
     }
 
     public static function getSubscribedEvents(): array
@@ -58,6 +55,7 @@ class OrderShippedSubscriber implements EventSubscriberInterface
             if (!isset($payload['orderId'])) {
                 continue;
             }
+            
             /** @var string $orderId */
             $orderId = $payload['orderId'];
             $this->bus->dispatch(new SendWebhookMessage($orderId));

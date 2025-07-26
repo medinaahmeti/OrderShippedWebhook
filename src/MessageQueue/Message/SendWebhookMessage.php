@@ -6,11 +6,8 @@ use Shopware\Core\Framework\MessageQueue\AsyncMessageInterface;
 
 class SendWebhookMessage implements AsyncMessageInterface
 {
-    private string $orderId;
-
-    public function __construct(string $orderId)
+    public function __construct(private readonly string $orderId)
     {
-        $this->orderId = $orderId;
     }
 
     public function getOrderId(): string
